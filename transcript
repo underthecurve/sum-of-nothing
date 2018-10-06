@@ -1,0 +1,282 @@
+Hi everyone — thanks so much for coming to my talk, which is philosophically titled, "The Sum of Nothing."
+
+My name is Christine Zhang. Just a couple of things upfront: I don't consider myself a python developer or a python expert. I'm actually a data journalist at The Baltimore Sun, where it's my job to analyze and visualize numbers and statistics for news stories. So why I am here, at a New York City-based Python developers conference? Well, I used to work in New York at the tech company Two Sigma, where my job title was "data scientist." 
+
+[slide]
+
+"Data scientist" is somewhat of a nebulous term, and I like this quote by Noah Lorang. "Sometimes I’m called a “data scientist.” Mostly, I just do arithmetic, and I’m ok with that."
+
+I like it because I think it's a true statement. But I also think that doing "arithmetic" can be more complicated than you'd think, especially when it involves using libraries that might not behave like you'd expect. I'm talking specifically about pandas. [slide]
+
+How many of you have heard of pandas? Pandas is one of the main tools used to "do arithmetic" on dataframes (also known as analyzing data) in Python. In this talk, I'll go through the history and drama behind how Pandas works with missing values and my own journey from love to hate to acceptance of its default behavior. 
+
+[slide] 
+So let's get some data. Consider these three questions. 
+
+How many cups of coffee have you had today?
+
+How many books have you read this month?
+
+How many hours of TV have you watched this week?
+
+[slide]
+
+Now, imagine a world where there's you, me, and Bob in New York City. In this world, you've had 1 cup of coffee today, I've had 2, and Bob - who had a late night - has had three. You've read 1 book this month, I've read 2, and Bob -- well, let's say he got all cranky and refused to answer the question. So Bob left the room, perhaps to get his fourth cup of coffee. He's gone, not answering any more questions. As for the hours of TV, maybe neither you nor I remembered so we also didn't answer that question either.
+
+I've put all this into a pandas dataframe that I'll call `d.` NaN stands for "not a number" aka "missing."	
+
+[slide]
+
+If I want to know the total cups of coffee the three of us said we drank, I'd want to sum this column using the pandas' sum function. What should the sum be? (don't worry, this isn't the complicated part)
+
+[slide]
+
+Six, right. 
+
+[slide]
+
+A slightly more complicatd question: If I want to know the total number of books we said we read, what should the sum of the books column be? How many of you think pandas should return 3? How many of you think it should return a NaN, because Bob refused to answer?
+
+[slide]
+
+So, pandas gives me back 3. Which is fine, some of you thought it would, maybe because 3 books are the known number of books read. 
+
+[slide]
+
+Finally, what about hours of TV? What should the sum of this column be? The sum of nothing, in a sense? You probably know the answer if you've read my talk description. But regardless of how panda does behave, I'm asking how you think pandas SHOULD behave.
+
+How many of you think it should return NaN? How many of you think it should return zero?
+
+[slide]
+
+So, it gives back zero. When I noticed this, I was horrified. And I'll tell you why. It's not just about You, Me, and Bob.
+
+[slide]
+
+What if I wanted to compare the three of us in New York, to, Harry, Hermione, and Ron at Hogwarts, all of whom answered the TV question.
+
+Is it fair to say, that in total, New York City watched zero hours of TV, while Hogwarts watched 22? Which is what you'd get if you ran pandas sum on each of those columns?
+
+Well, no, because there's a big difference between a missing value and a zero value. 
+
+It was baffling to me why pandas would do this.
+
+[slide]
+
+Especially since if you take the mean, you do get back a NaN.
+
+[slide]
+
+And if you take the min, you get back a NaN.
+
+[slide]
+
+And if you take the max, you get back a NaN. And if you take the product, if you multiply the NaNs in that column by each other, you get back a --
+
+[slide]
+
+oh wait, you get back a 1. WHAT??
+
+This behavior for the sum and product of nothing really tripped me up.
+
+[slide]
+
+As the ancient Greek philosopher Parmenides wrote (and I'm paraphrasing here), "something cannot come from nothing."
+
+[slide]
+
+Now, it didn't used to be this way. When I'm talking about Pandas, I'm talking about the newest version, 0.23.4.
+
+[slide]
+
+But in an older version, 0.21.1, the sum of a column of NaNs would be NaN. So what happened? Well, what comes between 21 and 23 --
+
+[slide]
+
+22! pandas 0.22 was a MAJOR RELEASE. and they made just one API-breaking change — the sum of an all - NaN series was now 0 and the product was now 1.
+
+[slide]
+
+they also added a `min_count` parameter, which represents the minimum number of valid items that have to exist in the column in order for the function to evaluate. So if I put `min_count = 1`, the sum and product of the TV column would both be NaN, which is the behavior I expect.
+
+Ok,
+
+[slide]
+
+But why? That seems like a pretty convoluted thing to have to do.
+
+[slide]
+
+It's interesting that in another programming language, R, which I also use to analyze data, the default behavior is to return an NA value for the sum of the TV column (R displays missing values as NAs). 
+
+R is pretty careful when it comes to NAs. It won't even add 1 + 2 in the books column because there's an NA there.
+
+[slide]
+
+In fact, it's kind of the opposite of Pandas in that it forces you to specify that you want to remove NAs, via the `na.rm = TRUE` parameter.
+
+So what's going on? Why, pandas, why?
+
+[slide]
+
+This is part of the reason I knew I had to go work in journalism, because my first instinct was to look up the people responsible for the pandas API change and ask them why they did it. Gotta hold them accountable for their actions, right?
+
+Some of you might know of Wes McKinney, the founder and "benevolent dictator for life" of pandas, but I figured who I'd really want to talk to was Jeff Reback, one of the core developers who currently manages the project - as evidenced by his GitHub commits to the pandas source code. It also helped that Jeff happened to work at the same company as me at the time, making it harder for him to avoid me.
+
+So I found him one day in the office, went down to his floor, and he very nicely sat down with me for an hour to talk about it.
+
+The funny thing is, he himself agrees that the sum of a column of NaNs should be NaN. And so should the product, for that matter, in his opinion.
+
+But the issue, it turns out, is more complicated than that.
+
+[slide]
+
+In fact, it wasn't as if they suddenly and spontaneously decided to change the pandas behavior in version 0.22.0, which is what I thought they did.
+
+[slide]
+Rather, the reason they had to think about this in the first place actually stems even further back, to pandas version 0.20.3.
+
+(showcase)
+I'm going show you what I'm talking about. 
+
+so, here's a terminal window with python 3.
+
+I'm going to show you that I have pandas version 0.20.3 loaded up. And here's our dataframe, d. and d['tv'].sum() is equal to NaN here. ok.
+
+here's another window. watch closely, now. Here I also have pandas version 0.20.3 loaded up. Everyone sees that, right? I feel like I'm doing a magic trick here.
+
+Got my `d` dataframe. Now, for the big reveal, d['tv'].sum() -- you ready?
+It's ZERO!
+
+I swear, these two tabs have the same exact version of pandas. and print(sys.version) the same exact version of Python. What is going on?
+
+[slide]
+
+It turns out, in pandas version 0.20.3, the behvaior of the sum function would depend on whether not `bottleneck` was installed. Bottleneck is an optional dependency that pandas called upon to perform operations when it's installed. In the first tab I showed you, bottleneck was not installed. And in the second tab, it was. 
+
+This was also the case for the product function, but for simplicity I'm just going to focus on sum for now.
+
+[slide]
+
+Anyway, I think we can all agree that this is VERY bad. Like, at least be consistent with your behavior right?
+
+And the core developers agreed, too. So when this issue came to their attention (and that's a long story in and of itself), they realized that they had to choose a default behavior. What was it going to be? 0, or NaN?
+
+[slide]
+
+Now, if you remember, I said that Jeff Reback, one of the core devs, agreed with me that the sum should be NaN. And so that's what he changed it to, in pandas 0.21.1. But, in his words
+
+[slide]
+
+“I made the sum of an empty list to be NaN … and the world screamed.”
+
+[slide]
+
+He wasn't kidding. If you're bored one day, go to issue #9422 on the pandas dev github and just look at the hundreds of comments, some of varying levels of civility. They even put out a call for feedback on the pandas-dev mailing list. Suffice it to say, a lot of people were very upset that the sum of all NaNs was now changed to be NaN.
+
+[slide]
+
+When he said this, I was like, "I don't get it." Nothing can't turn into something, it seems pretty intuitive to me that the sum of a column of missing values would also be missing.
+
+[slide]
+
+But this is where math comes in. And I'm actually going to go back to my comparison between R and Pandas.
+
+[slide]
+
+Here's the thing. The word "nothing" can mean different things when it comes to working with data. NaN or NA is meant to indicate that there's missing data - as in, there perhaps should be values in these cells, but it's missing for some reason. I know I said NaN or NA was "nothing" before, but philosophically, it's actually something -- a placeholder for missing data values.
+
+It is only when you "remove" the NaNs or NAs - which happens in pandas by default and R via `na.rm = TRUE` - that you truly get a column full of **nothing**, or an empty column. And what is the sum of this empty column? The two programming languages agree: it is zero.
+
+This might sound kind of trippy, so let's take a closer look.
+
+[slide]
+
+Here's the R code. Once we remove the NAs from the TV column, and we sum it, we get an empty sum. These two code chunks are functionally exactly the same.
+
+[slide]
+
+And it's the same with Pandas.
+
+[slide]
+
+In math, there's this thing called an empty sum, which by definition is 0. It's one of the basic math conventions (clearly, I'm not a math person, because I had no idea this was the case). 
+
+It's hard for me to understand this abstract concept, but it helps to think of it with a different example than my hours of TV example. Say that I went to the bookstore and bought all seven Harry Potter books, because I love Harry Potter and I want to re-read the all. Two of you came along with me, but you guys didn't get any Harry Potter books because you don't like Harry Potter. In this case, I'd have 7 books and you guys would have 0 books, and together the three of us would have 7 books. Ok, that's easy. But say that you guys didn't even come along with me to the bookstore at all. You overslept that day and totally forgot to meet me for our bookstore outing. In this case, you can think of me as having 7 books and you guys individually as having NA books (it's not 0, because you didn't actively buy no books, you didn't even show up.) Together, though, we still have 7 books. In this example, the two of you are the empty set - empty is an apt descriptor of life without Harry Potter. And in order for the fact that between the three of us, there's still those 7 Harry Potter books, to hold true, the two of you together - the sum of the empty set - has to be zero.
+
+In other words, in the right context, it does make sense for the sum of nothing to equal zero.
+
+And I actually get it now, why maybe you'd want to be mathematically correct. And so I can understand why the math people were all up in arms about it with pandas 0.21.1.
+
+[slide]
+
+But still, what I really could not wrap my head around was this idea of the empty product.  
+
+[slide]
+
+The product of an empty column is 1, in both R (again, once you remove the NAs, you're left with empty) and 
+
+[slide]
+
+Of course, it's now 1 in Pandas, too.
+
+[slide]
+
+Again, I didn't find the documentation to be particularly useful in explaining why the empty product was 1.
+
+[slide]
+
+The wikipedia entry was also a bit inscrutable. Instead, and warning -- this is really hacky math, so if anyone has a better way of explaining it, please do let me know.
+
+[slide]
+
+The way I think about it is by having some fun with Euler's number, or "e."
+
+e can be expressed as e to the power of 1. It's like taking the product of 1 e.
+
+[slide]
+This can also be written as e to the power of 1 + 0. 
+
+[slide]
+Yet another way of displaying this equation thanks to the Product Rule for exponents is e to the power of 1 times e to the power of 0. 
+
+We know that this expression has to equal e. What does e to the power of 0 -- in other words, an empty product or a product of 0 e's -- have to equal in order for this to happen? [slide] 1.	
+
+As a friend of mine put it, the product of an empty set HAS to equal 1 because otherwise all exponents don't work ever, and all math breaks.
+
+In summary, I think the mathematical considerations here are valid. 
+
+[slide]
+
+Not that that's always the only consideration, because pandas is not a math library.
+
+the broader challenge for a library like pandas, I think, is that there are so many different kinds of users. And even if they did look at feedback from GitHub and the pandas-dev mailing list, it's not entirely clear that a representative sample of the user base posts in those channels. Jeff Reback told me that I was the only one who complained about them changing the sum of an empty list to be 0, and the product to be 1, and I did it after the fact, because I didn't realize that these discussions and debates had even occurred in the first place.
+
+but like I said at the start of this talk, I'm no expert. so here are some takeaways in the form a few closing quotes from others.
+
+[slide]
+
+during his talk on Python Oddities yesterday, Trey Hunner said that "if you found something that looks like a bug, you might just be misunderstanding the tradeoffs that the core developers had to make." I think that very much applies here.
+
+[slide]
+
+But of course, we still have this quote from our friend Parmenides. IN other words, fundamental mathematical definitions can still be counterintuitive.
+
+But maybe it's time for an updated philosophy.
+
+[slide]
+
+I'll leave you with this one from jazz composer and poet Sun Ra, referenced in Yo La Tengo's 2000 album:
+
+"At first there was nothing … and then nothing turned itself inside-out and became something."
+
+You may not have followed my admittedly hacky math today, but remember this: arithmetic is not simple, programming libraries are created by humans, and, if you're working with missing data and you're not careful, nothing can in fact turn itself into something.
+
+
+
+
+
+
+
+
+
